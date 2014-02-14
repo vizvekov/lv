@@ -9,7 +9,7 @@ class domXML_create:
 
     domain = ET.Element("domain")
 
-    def __init__(self, name, ram, cpu, os_type = "pc", arch = "x86_64"):
+    def __init__(self, name, ram, cpu, os_type = "pc", arch = "x86_64", emulator = "/usr/libexec/qemu-kvm"):
         self.domain.set("type", "kvm")
         ET.SubElement(self.domain,"name").text = name
         xml_mem = ET.SubElement(self.domain,"memory")
@@ -42,11 +42,12 @@ class domXML_create:
         ET.SubElement(self.domain,"on_reboot").text = "restart"
         ET.SubElement(self.domain,"on_crash").text = "restart"
         self.dom_devices = ET.SubElement(self.domain,"devices")
+        print "Set emulator: %s" % emulator
+        ET.SubElement(self.dom_devices,"emulator").text = emulator
         self.__dev_init(name)
 
 
     def __dev_init(self,g_name):
-        ET.SubElement(self.dom_devices,"emulator").text = "/usr/libexec/qemu-kvm"
         channel = ET.SubElement(self.dom_devices,"channel")
         channel.set("type","unix")
         chan_source = ET.SubElement(channel,"source")
@@ -152,15 +153,25 @@ class Dom0_XML():
     __tmp_xml = ""
     __xml = ""
 
-    def __init__(self,xml):
-        self.__xml = ET.fromstring(xml)
+    def __init__(self,xml_clear):
+        self.__xml = ET.fromstring(xml_clear)
+
+    def reset_xml(self,xml_clear):
+        self.__xml = ET.fromstring(xml_clear)
 
     def set_static_ip(self,mac,ip,vm_name):
-        dhcp = self.__xml.findall("./ip/dhcp")[0]
+        dhcp = self.__xml.findall("./ip/dhcp")
+        if not dhcp:
+           dhcp = ET.SubElement(self.__xml.findall("./ip")[0],"dhcp")
+        else:
+            dhcp = dhcp[0]
         host = ET.SubElement(dhcp,"host")
         host.set("mac",mac)
         host.set("name",vm_name)
         host.set("ip",ip)
+
+    def get_emulator(self):
+        return self.__xml.findall("./guest/arch/emulator")[0].text
 
     def del_static_ip(self,ip):
         hosts = self.__xml.findall("./ip/dhcp/host")
@@ -168,6 +179,18 @@ class Dom0_XML():
             if host.attrib['ip'] == ip:
                 dhcp = self.__xml.findall("./ip/dhcp")[0]
                 dhcp.remove(host)
+
+    def del_range(self):
+        dhcp = self.__xml.findall("./ip/dhcp")[0]
+        range = self.__xml.findall("./ip/dhcp/range")[0]
+        dhcp.remove(range)
+
+    def set_default_router(self,ip):
+        router = self.__xml.findall("./ip")[0]
+        router.set("address",ip)
+
+    def get_default_router(self):
+        return self.__xml.findall("./ip")[0].attrib['address']
 
     def get_ip_in_network(self):
         ips = []

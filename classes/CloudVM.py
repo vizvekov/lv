@@ -20,6 +20,28 @@ class CloudVM(CloudIP):
         CloudIP.__init__(self)
         self.disks_path = disks_path
 
+    def __inspect_new_node(self,node_name,net):
+        net_obj = self.Nodes[node_name][0].networkLookupByName(net)
+        dom0_XML = Dom0_XML(net_obj.XMLDesc(0))
+        print "Old router: %s" % dom0_XML.get_default_router()
+        if self.isIPInUse(dom0_XML.get_default_router()) or not self.isInSubnet(dom0_XML.get_default_router()):
+            self.__instect_used_ip()
+            print "Creating New Router"
+            status, ip = self.get_ip()
+            if status:
+                net_obj.destroy()
+                dom0_XML.set_default_router(ip)
+                dom0_XML.del_range()
+                net_obj = self.Nodes[node_name][0].networkDefineXML(dom0_XML.get_XML_dom0_net())
+                net_obj.create()
+            else:
+                print ip
+        print "New route: %s" % dom0_XML.get_default_router()
+        self.add_ip_as_used(dom0_XML.get_default_router())
+        dom0_XML.reset_xml(self.Nodes[node_name][0].getCapabilities())
+        emulator = dom0_XML.get_emulator()
+        self.Nodes[node_name].append(emulator)
+
     def test_libvirt_connection(self, hode_name):
         conn = self.Nodes[hode_name][0]
         hostname = self.Nodes[hode_name][4]
@@ -67,13 +89,13 @@ class CloudVM(CloudIP):
     def get_vm_strim(self,vm_name):
         return self.Nodes[self.VMs[vm_name][1]][0].newStream(0)
 
-    def add_node(self,hostname,user,password):
+    def add_node(self,hostname,user,password, net = 'default'):
         ssh=paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(hostname,username=user,password=password)
         conn = libvirt.open("qemu+ssh://root@%s/system" % hostname)
-        #vm.destroy()
         self.Nodes.update({conn.getHostname(): [conn,ssh,user,password,hostname]})
+        self.__inspect_new_node(conn.getHostname(),net)
         return conn.getHostname()
 
     def live_memory_resize(self,vm_name,new_size):
@@ -131,7 +153,7 @@ class CloudVM(CloudIP):
         self.__instect_used_ip()
         status, ip = self.get_ip()
         if status:
-            self.VMs.update({name: [domXML_create(name,ram,cpu), node_name, ip,self._get_mac()]})
+            self.VMs.update({name: [domXML_create(name,ram,cpu,emulator=self.Nodes[node_name][5]), node_name, ip,self._get_mac()]})
             return True
         return False
 

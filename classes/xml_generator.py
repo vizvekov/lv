@@ -181,9 +181,10 @@ class Dom0_XML():
                 dhcp.remove(host)
 
     def del_range(self):
-        dhcp = self.__xml.findall("./ip/dhcp")[0]
-        range = self.__xml.findall("./ip/dhcp/range")[0]
-        dhcp.remove(range)
+        dhcp = self.__xml.findall("./ip/dhcp")
+        ran = self.__xml.findall("./ip/dhcp/range")
+        if dhcp and ran:
+            dhcp[0].remove(ran[0])
 
     def set_default_router(self,ip):
         router = self.__xml.findall("./ip")[0]

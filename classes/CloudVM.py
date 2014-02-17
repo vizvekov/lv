@@ -95,8 +95,6 @@ class CloudVM(CloudIP):
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(hostname,username=user,password=password)
         conn = libvirt.open("qemu+ssh://root@%s/system" % hostname)
-        net = conn.networkLookupByName()
-        net.update("add","ip-dhcp-host",0,"",0)
         self.Nodes.update({conn.getHostname(): [conn,ssh,user,password,hostname]})
         self.__inspect_new_node(conn.getHostname(),net)
         return conn.getHostname()

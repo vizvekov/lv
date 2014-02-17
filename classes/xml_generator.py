@@ -4,12 +4,10 @@ import xml.etree.cElementTree as ET
 
 class domXML_create:
 
-    disk_names = ['vda','vdb','vdc','vdd']
-    interfaces_name = ['net0','net1','net2','net3']
-
-    domain = ET.Element("domain")
-
     def __init__(self, name, ram, cpu, os_type = "pc", arch = "x86_64", emulator = "/usr/libexec/qemu-kvm"):
+        self.disk_names = ['vda','vdb','vdc','vdd']
+        self.interfaces_name = ['net0','net1','net2','net3']
+        self.domain = ET.Element("domain")
         self.domain.set("type", "kvm")
         ET.SubElement(self.domain,"name").text = name
         xml_mem = ET.SubElement(self.domain,"memory")
@@ -146,12 +144,10 @@ class domXML_create:
     def create(self):
 #        tree = ET.ElementTree(self.domain)
         #tree.write("filename.xml")
+        print ET.tostring(self.domain)
         return ET.tostring(self.domain)
 
 class Dom0_XML():
-
-    __tmp_xml = ""
-    __xml = ""
 
     def __init__(self,xml_clear):
         self.__xml = ET.fromstring(xml_clear)

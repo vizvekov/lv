@@ -13,6 +13,13 @@ class CloudVM(CloudIP):
     VMs = {}
     disks_path = ""
 
+    COMMANDDICT = {"none":0, "modify":1, "delete":2, "add-first":4}
+    SECTIONDICT = {"none":0, "bridge":1, "domain":2, "ip":3, "ip-dhcp-host":4, \
+                 "ip-dhcp-range":5, "forward":6, "forward-interface":7,\
+               "forward-pf":8, "portgroup":9, "dns-host":10, "dns-txt":11,\
+               "dns-srv":12}
+    FLAGSDICT = {"current":0, "live":1, "config": 2}
+
     def _get_mac(self):
         return ':'.join(map(lambda x: "%02x" % x, [ 0x00, 0x16, 0x3E, random.randint(0x00, 0x7F), random.randint(0x00, 0xFF), random.randint(0x00, 0xFF) ]))
 
@@ -51,11 +58,8 @@ class CloudVM(CloudIP):
 
     def __del_vm_ip(self,vm_name,net = 'default'):
         net_obj = self.Nodes[self.VMs[vm_name][1]][0].networkLookupByName(net)
-        net_obj.destroy()
-        dom0_XML = Dom0_XML(net_obj.XMLDesc(0))
-        dom0_XML.del_static_ip(self.VMs[vm_name][2])
-        net_obj = self.Nodes[self.VMs[vm_name][1]][0].networkDefineXML(dom0_XML.get_XML_dom0_net())
-        net_obj.create()
+        dom0_XML = Dom0_XML()
+        net_obj.update(self.COMMANDDICT['delete'],self.SECTIONDICT['ip-dhcp-host'],0,dom0_XML.set_static_ip(self.VMs[vm_name][3],self.VMs[vm_name][2],vm_name),self.FLAGSDICT['live'])
         self.releace_ip(self.VMs[vm_name][2])
         self.VMs[vm_name][2] = None
 
@@ -66,11 +70,8 @@ class CloudVM(CloudIP):
             if status:
                 self.VMs[vm_name][2] = ip
         net_obj = self.Nodes[self.VMs[vm_name][1]][0].networkLookupByName(net)
-        net_obj.destroy()
-        dom0_XML = Dom0_XML(net_obj.XMLDesc(0))
-        dom0_XML.set_static_ip(self.VMs[vm_name][3],self.VMs[vm_name][2],vm_name)
-        net_obj = self.Nodes[self.VMs[vm_name][1]][0].networkDefineXML(dom0_XML.get_XML_dom0_net())
-        net_obj.create()
+        dom0_XML = Dom0_XML()
+        net_obj.update(self.COMMANDDICT['add-first'],self.SECTIONDICT['ip-dhcp-host'],0,dom0_XML.set_static_ip(self.VMs[vm_name][3],self.VMs[vm_name][2],vm_name),self.FLAGSDICT['live'])
 
     def __instect_used_ip(self,file = "/var/lib/libvirt/dnsmasq/default.leases",net = 'default'):
         for node in self.Nodes:
@@ -94,6 +95,8 @@ class CloudVM(CloudIP):
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(hostname,username=user,password=password)
         conn = libvirt.open("qemu+ssh://root@%s/system" % hostname)
+        net = conn.networkLookupByName()
+        net.update("add","ip-dhcp-host",0,"",0)
         self.Nodes.update({conn.getHostname(): [conn,ssh,user,password,hostname]})
         self.__inspect_new_node(conn.getHostname(),net)
         return conn.getHostname()

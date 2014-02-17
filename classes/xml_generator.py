@@ -149,22 +149,14 @@ class domXML_create:
 
 class Dom0_XML():
 
-    def __init__(self,xml_clear):
+    def __init__(self,xml_clear = ""):
         self.__xml = ET.fromstring(xml_clear)
 
     def reset_xml(self,xml_clear):
         self.__xml = ET.fromstring(xml_clear)
 
     def set_static_ip(self,mac,ip,vm_name):
-        dhcp = self.__xml.findall("./ip/dhcp")
-        if not dhcp:
-           dhcp = ET.SubElement(self.__xml.findall("./ip")[0],"dhcp")
-        else:
-            dhcp = dhcp[0]
-        host = ET.SubElement(dhcp,"host")
-        host.set("mac",mac)
-        host.set("name",vm_name)
-        host.set("ip",ip)
+        return "<host mac='%s' name='%s' ip='%s' />" % (mac,vm_name,ip)
 
     def get_emulator(self):
         return self.__xml.findall("./guest/arch/emulator")[0].text

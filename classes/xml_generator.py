@@ -149,8 +149,11 @@ class domXML_create:
 
 class Dom0_XML():
 
-    def __init__(self,xml_clear = ""):
-        self.__xml = ET.fromstring(xml_clear)
+    def __init__(self,xml_clear = None):
+        if xml_clear == None:
+            pass
+        else:
+            self.__xml = ET.fromstring(xml_clear)
 
     def reset_xml(self,xml_clear):
         self.__xml = ET.fromstring(xml_clear)

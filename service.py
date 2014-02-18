@@ -33,7 +33,7 @@ def common_headers(function):
 @common_headers
 def process_node():
     response.status = 200
-    vm_name = request.forms.post('vm_name')
+    vm_name = request.forms.get('vm_name')
     if not vm_name:
         abort(400,"No vm name")
 
@@ -43,19 +43,19 @@ def process_node():
 @common_headers
 def add_vm():
     response.status = 200
-    vm_name = request.forms.post('name')
+    vm_name = request.forms.get('name')
     if not vm_name:
         abort(400,'VM name not specified')
 
-    ram = request.forms.post('ram')
+    ram = request.forms.get('ram')
     if not ram:
         abort(400,'VM ram not specified')
 
-    ncpu = request.forms.post('ncpu')
+    ncpu = request.forms.get('ncpu')
     if not ncpu:
         abort(400,'VM cpu num not specified')
 
-    disk_size = request.forms.post('disk_size')
+    disk_size = request.forms.get('disk_size')
     if not disk_size:
         abort(400,'VM disk size not specified')
 
@@ -85,7 +85,7 @@ def get_vms():
 @common_headers
 def add_subnet():
     response.status = 201
-    subnet = request.forms.post('subnet')
+    subnet = request.forms.get('subnet')
     try:
         cloud_vm.add_subnet(subnet)
         return {'status': True}
@@ -97,7 +97,7 @@ def add_subnet():
 @common_headers
 def get_subnets():
     response.status = 201
-    return {'subnets': cloud_vm.get_subnets()}
+    return json.dumps({'subnets': cloud_vm.get_subnets()})
 
 
 @api.post('/v0/nodes')

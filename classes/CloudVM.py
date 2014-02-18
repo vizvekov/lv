@@ -196,6 +196,9 @@ class CloudVM(CloudIP):
         vm = self.get_vm(vm_name)
         vm.create()
 
+    def get_subnets(self):
+        return self.list_subnets()
+
     def get_vm_stat(self,vm_name):
         vm = self.Nodes[self.VMs[vm_name][1]][0].lookupByName(vm_name)
         return vm.isActive()

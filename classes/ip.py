@@ -16,7 +16,7 @@ class CloudIP():
     def add_subnet(self, subnet):
         self.__subnets.append(subnet)
 
-    def get_subnets(self):
+    def list_subnets(self):
         return self.__subnets
 
     def isInSubnet(self,ip,subnet_index=None):

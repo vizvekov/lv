@@ -28,15 +28,72 @@ def common_headers(function):
     return wrapper
 
 
-@api.post('/v0/vms_del')
+@api.delete('/v0/vms/<vm_name>')
 @common_headers
-def process_node():
+def delete_vm(vm_name = None):
     response.status = 200
-    vm_name = request.forms.get('vm_name')
     if not vm_name:
         abort(400,"No vm name")
+    try:
+        cloud_vm.undefine_vm(vm_name)
+        return {"status": True}
+    except Exception,e:
+        return {"status": False, "error": e}
 
-    cloud_vm.undefine_vm(vm_name)
+@api.put('/v0/vms/<vm_name>')
+@common_headers
+def process_node(vm_name = None):
+    response.status = 200
+    if not vm_name:
+        abort(400,"No vm name")
+    func = request.forms.get('func')
+    if not func:
+        abort(400,"No function specified")
+    if func == "disk_resize_live":
+        disk_size = int(request.forms.get('disk_size'))
+        if not disk_size:
+            abort(400,"No disk size specified")
+        try:
+            cloud_vm.live_resize_disk(vm_name,disk_size)
+            return {"status": True}
+        except Exception, e:
+            return {"status": False, "error": e}
+    elif func == "resize_mem_live":
+        mem_size = int(request.forms.get('mem_size'))
+        if not mem_size:
+            abort(400,"No memory size specified")
+        try:
+            cloud_vm.live_memory_resize(vm_name,mem_size)
+            return {"status": True}
+        except Exception, e:
+            return {"status": False,"error": e}
+    elif func == "suspend":
+        try:
+            cloud_vm.suspend_vm(vm_name)
+            return {"status": True}
+        except Exception, e:
+            return {"status": False,"error": e}
+    elif func == "resume":
+        try:
+            cloud_vm.resume_vm(vm_name)
+            return {"status": True}
+        except Exception, e:
+            return {"status": False,"error": e}
+    elif func == "destroy":
+        try:
+            cloud_vm.destroy_vm(vm_name)
+            return {"status": True}
+        except Exception, e:
+            return {"status": False,"error": e}
+    elif func == "start":
+        try:
+            cloud_vm.start_vm(vm_name)
+            return {"status": True}
+        except Exception, e:
+            return {"status": False,"error": e}
+    else:
+        abort(400, "Function is no available")
+
 
 @api.post('/v0/vms')
 @common_headers
@@ -90,6 +147,8 @@ def get_vms():
 def add_subnet():
     response.status = 201
     subnet = request.forms.get('subnet')
+    if not subnet:
+        abort(400, "Subnet is not created")
     try:
         cloud_vm.add_subnet(subnet)
         return {'status': True}

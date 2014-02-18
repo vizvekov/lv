@@ -8,7 +8,6 @@ from classes.CloudVM import CloudVM
 api = Bottle()
 cloud_vm = CloudVM()
 
-node_name = ""
 
 # API Design
 # JSON для всего
@@ -59,9 +58,14 @@ def add_vm():
     if not disk_size:
         abort(400,'VM disk size not specified')
 
+    node_name = request.forms.get('node_name')
+    if not node_name:
+        abort(400,'Node name not specified')
+
     if not cloud_vm.create_vm(vm_name,1024,1,node_name):
         abort(400, "VM is not created")
-    cloud_vm.add_disk(vm_name,"/root/IMAGES/ubuntu_image.qcow2","50")
+
+    cloud_vm.add_disk(vm_name,"/root/IMAGES/ubuntu_image.qcow2",disk_size)
     cloud_vm.add_interface(vm_name)
     try:
         cloud_vm.define_vm(vm_name)

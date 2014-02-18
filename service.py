@@ -8,6 +8,8 @@ from classes.CloudVM import CloudVM
 api = Bottle()
 cloud_vm = CloudVM()
 
+node_name = ""
+
 # API Design
 # JSON для всего
 #
@@ -18,7 +20,6 @@ cloud_vm = CloudVM()
 #           GET - JSON информация о ноде
 #           PUT - изменить у существующей ноды параметры
 
-
 def common_headers(function):
     @wraps(function)
     def wrapper(*args, **kwargs):
@@ -26,6 +27,77 @@ def common_headers(function):
         response.content_type = 'application/json'
         return function(*args, **kwargs)
     return wrapper
+
+
+@api.post('/v0/vms_del')
+@common_headers
+def process_node():
+    response.status = 200
+    vm_name = request.forms.post('vm_name')
+    if not vm_name:
+        abort(400,"No vm name")
+
+    cloud_vm.undefine_vm(vm_name)
+
+@api.post('/v0/vms')
+@common_headers
+def add_vm():
+    response.status = 200
+    vm_name = request.forms.post('name')
+    if not vm_name:
+        abort(400,'VM name not specified')
+
+    ram = request.forms.post('ram')
+    if not ram:
+        abort(400,'VM ram not specified')
+
+    ncpu = request.forms.post('ncpu')
+    if not ncpu:
+        abort(400,'VM cpu num not specified')
+
+    disk_size = request.forms.post('disk_size')
+    if not disk_size:
+        abort(400,'VM disk size not specified')
+
+    if not cloud_vm.create_vm(vm_name,1024,1,node_name):
+        abort(400, "VM is not created")
+    cloud_vm.add_disk(vm_name,"/root/IMAGES/ubuntu_image.qcow2","50")
+    cloud_vm.add_interface(vm_name)
+    try:
+        cloud_vm.define_vm(vm_name)
+        cloud_vm.start_vm(vm_name)
+    except Exception, e:
+        abort(400,e)
+    if cloud_vm.get_vm_stat(vm_name):
+        return {'vm_name': vm_name, 'status': 'Running', 'node': node_name}
+    else:
+        abort(400,"VM is not started")
+
+
+@api.get('/v0/vms')
+@common_headers
+def get_vms():
+    response.status = 200
+    return json.dumps(cloud_vm.get_vms())
+
+
+@api.post('/v0/subnet')
+@common_headers
+def add_subnet():
+    response.status = 201
+    subnet = request.forms.post('subnet')
+    try:
+        cloud_vm.add_subnet(subnet)
+        return {'status': True}
+    except Exception, e:
+        return {'status': False, 'error': e}
+
+
+@api.get('/v0/subnet')
+@common_headers
+def get_subnets():
+    response.status = 201
+    return {'subnets': cloud_vm.get_subnets()}
 
 
 @api.post('/v0/nodes')
@@ -46,19 +118,22 @@ def add_node():
         abort(400, 'Password not specified')
 
     # Delegate
-    cloud_vm.add_node(host_name, user_name, password)
+    node_name = cloud_vm.add_node(host_name, user_name, password)
+
+    if cloud_vm.get_node_status(node_name):
+        status = "Redy"
+    else:
+        status = "Error"
 
     # TODO: We have to return JSON describing the node
-    return {'host_name': host_name, 'user_name': user_name}
+    return {'host_name': node_name, 'status': status}
 
 
 @api.get('/v0/nodes')
 @common_headers
 def get_nodes():
     response.status = 200
-    return json.dumps([{'host_name': '10.0.0.1', 'user_name': 'aza'},
-                       {'host_name': '10.0.0.2', 'user_name': 'aka'},
-                       {'host_name': '10.0.0.3', 'user_name': 'aba'}])
+    return json.dumps(cloud_vm.get_nodes())
 
 
 if __name__ == '__main__':

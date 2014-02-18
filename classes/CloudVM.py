@@ -20,6 +20,16 @@ class CloudVM(CloudIP):
                "dns-srv":12}
     FLAGSDICT = {"current":0, "live":1, "config": 2}
 
+    states = {
+        libvirt.VIR_DOMAIN_NOSTATE: 'no state',
+        libvirt.VIR_DOMAIN_RUNNING: 'running',
+        libvirt.VIR_DOMAIN_BLOCKED: 'blocked on resource',
+        libvirt.VIR_DOMAIN_PAUSED: 'paused by user',
+        libvirt.VIR_DOMAIN_SHUTDOWN: 'being shut down',
+        libvirt.VIR_DOMAIN_SHUTOFF: 'shut off',
+        libvirt.VIR_DOMAIN_CRASHED: 'crashed',
+    }
+
     def _get_mac(self):
         return ':'.join(map(lambda x: "%02x" % x, [ 0x00, 0x16, 0x3E, random.randint(0x00, 0x7F), random.randint(0x00, 0xFF), random.randint(0x00, 0xFF) ]))
 
@@ -49,9 +59,9 @@ class CloudVM(CloudIP):
         emulator = dom0_XML.get_emulator()
         self.Nodes[node_name].append(emulator)
 
-    def test_libvirt_connection(self, hode_name):
-        conn = self.Nodes[hode_name][0]
-        hostname = self.Nodes[hode_name][4]
+    def test_libvirt_connection(self, node_name):
+        conn = self.Nodes[node_name][0]
+        hostname = self.Nodes[node_name][4]
         if not conn.isAlive():
             return libvirt.open("qemu+ssh://root@%s/system" % hostname)
         return conn
@@ -169,6 +179,18 @@ class CloudVM(CloudIP):
     def define_vm(self,vm_name):
         self.Nodes[self.VMs[vm_name][1]][0].defineXML(self.VMs[vm_name][0].create())
 
+    def get_vms(self):
+        vms = []
+        for vm in self.VMs:
+            [state, maxmem, mem, ncpu, cputime] = self.get_vm(vm).info()
+            vms.append({"vm_name": vm,
+                        'node': self.VMs[vm][1],
+                        "vm_ip": self.VMs[vm][2],
+                        "status": self.states.get(state, state),
+                        "vm_mem": mem,
+                        "ncpu": ncpu})
+        return vms
+
     def start_vm(self,vm_name):
         self.__set_vm_ip(vm_name)
         vm = self.get_vm(vm_name)
@@ -177,6 +199,17 @@ class CloudVM(CloudIP):
     def get_vm_stat(self,vm_name):
         vm = self.Nodes[self.VMs[vm_name][1]][0].lookupByName(vm_name)
         return vm.isActive()
+
+    def get_nodes(self):
+        node_array = []
+        for node in self.Nodes:
+            node_array.append({'host_name': node,'status': self.get_node_status(node)})
+        return node_array
+
+    def get_node_status(self,node_name):
+        conn = self.Nodes[node_name][0]
+        hostname = self.Nodes[node_name][4]
+        return conn.isAlive()
 
     def __add_firewall_rule(self):
         pass
